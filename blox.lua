@@ -1,5 +1,3 @@
-
-
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
@@ -897,7 +895,7 @@ self.RPTitle.BackgroundTransparency = 1.000
 self.RPTitle.Position = UDim2.new(0.5, 0, 0.05, 0)
 self.RPTitle.Size = UDim2.new(0.9, 0, 0, 20)
 self.RPTitle.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-self.RPTitle.Text = "SPAWNED FRUITS"
+self.RPTitle.Text = "SPAWNED FRUITS [Switch]"
 self.RPTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 self.RPTitle.TextSize = 14.000
 self.RPTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -1187,6 +1185,87 @@ end
 for _, fruitName in ipairs(AllFruits) do
     CreateFruitToggle(fruitName)
 end
+
+local function CreateSettingToggle(name, labelText, settingKey, layoutOrder)
+    local buttonFrame = Instance.new("Frame")
+    buttonFrame.Name = name .. "Button"
+    buttonFrame.Parent = self.settings
+    buttonFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    buttonFrame.BackgroundTransparency = 0.700
+    buttonFrame.BorderSizePixel = 0
+    buttonFrame.LayoutOrder = layoutOrder
+    buttonFrame.Size = UDim2.new(0, 491, 0, 34)
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = buttonFrame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = buttonFrame
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 2.000
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "Title"
+    titleLabel.Parent = buttonFrame
+    titleLabel.AnchorPoint = Vector2.new(0, 0.5)
+    titleLabel.BackgroundTransparency = 1.000
+    titleLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    titleLabel.Size = UDim2.new(0, 200, 0, 21)
+    titleLabel.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    titleLabel.Text = labelText
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextSize = 16.000
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local titlePadding = Instance.new("UIPadding")
+    titlePadding.Parent = titleLabel
+    titlePadding.PaddingLeft = UDim.new(0, 10)
+
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Name = "Value"
+    valueLabel.Parent = buttonFrame
+    valueLabel.AnchorPoint = Vector2.new(1, 0.5)
+    valueLabel.BackgroundTransparency = 1.000
+    valueLabel.Position = UDim2.new(1, 0, 0.5, 0)
+    valueLabel.Size = UDim2.new(0, 200, 0, 21)
+    valueLabel.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    valueLabel.Text = SETTINGS[settingKey] and "ENABLED" or "DISABLED"
+    valueLabel.TextColor3 = SETTINGS[settingKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
+    valueLabel.TextSize = 14.000
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+    local valuePadding = Instance.new("UIPadding")
+    valuePadding.Parent = valueLabel
+    valuePadding.PaddingRight = UDim.new(0, 10)
+
+    local interactBtn = Instance.new("TextButton")
+    interactBtn.Name = "Interact"
+    interactBtn.Parent = buttonFrame
+    interactBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+    interactBtn.BackgroundTransparency = 1.000
+    interactBtn.Position = UDim2.new(0.5, 0, 0.5, 0)
+    interactBtn.Size = UDim2.new(0, 491, 0, 34)
+    interactBtn.Text = ""
+
+    interactBtn.MouseButton1Click:Connect(function()
+        SETTINGS[settingKey] = not SETTINGS[settingKey]
+        SaveConfig()
+        valueLabel.Text = SETTINGS[settingKey] and "ENABLED" or "DISABLED"
+        valueLabel.TextColor3 = SETTINGS[settingKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
+        self.Notification:Fire(labelText .. " set to " .. (SETTINGS[settingKey] and "ENABLED" or "DISABLED"), "success")
+    end)
+
+    table.insert(_G.SettingsUpdaters, function()
+        valueLabel.Text = SETTINGS[settingKey] and "ENABLED" or "DISABLED"
+        valueLabel.TextColor3 = SETTINGS[settingKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
+    end)
+end
+
+    CreateSettingToggle("TravelSea1", "TRAVEL TO SEA 1", "TravelSea1", 5)
+    CreateSettingToggle("TravelSea2", "TRAVEL TO SEA 2", "TravelSea2", 6)
+    CreateSettingToggle("TravelSea3", "TRAVEL TO SEA 3", "TravelSea3", 7)
 
 local function UpdateUIValues()
     self.Value.Text = SETTINGS.HideName and "ENABLED" or "DISABLED"
@@ -1552,83 +1631,6 @@ local function NotificationManager()
 end
 task.spawn(NotificationManager)
 
-local function CreateSettingToggle(name, labelText, settingKey, layoutOrder)
-    local buttonFrame = Instance.new("Frame")
-    buttonFrame.Name = name .. "Button"
-    buttonFrame.Parent = self.settings
-    buttonFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    buttonFrame.BackgroundTransparency = 0.700
-    buttonFrame.BorderSizePixel = 0
-    buttonFrame.LayoutOrder = layoutOrder
-    buttonFrame.Size = UDim2.new(0, 491, 0, 34)
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 5)
-    corner.Parent = buttonFrame
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Parent = buttonFrame
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 2.000
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Name = "Title"
-    titleLabel.Parent = buttonFrame
-    titleLabel.AnchorPoint = Vector2.new(0, 0.5)
-    titleLabel.BackgroundTransparency = 1.000
-    titleLabel.Position = UDim2.new(0, 0, 0.5, 0)
-    titleLabel.Size = UDim2.new(0, 200, 0, 21)
-    titleLabel.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-    titleLabel.Text = labelText
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 16.000
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    local titlePadding = Instance.new("UIPadding")
-    titlePadding.Parent = titleLabel
-    titlePadding.PaddingLeft = UDim.new(0, 10)
-
-    local valueLabel = Instance.new("TextLabel")
-    valueLabel.Name = "Value"
-    valueLabel.Parent = buttonFrame
-    valueLabel.AnchorPoint = Vector2.new(1, 0.5)
-    valueLabel.BackgroundTransparency = 1.000
-    valueLabel.Position = UDim2.new(1, 0, 0.5, 0)
-    valueLabel.Size = UDim2.new(0, 200, 0, 21)
-    valueLabel.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-    valueLabel.Text = SETTINGS[settingKey] and "ENABLED" or "DISABLED"
-    valueLabel.TextColor3 = SETTINGS[settingKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
-    valueLabel.TextSize = 14.000
-    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
-
-    local valuePadding = Instance.new("UIPadding")
-    valuePadding.Parent = valueLabel
-    valuePadding.PaddingRight = UDim.new(0, 10)
-
-    local interactBtn = Instance.new("TextButton")
-    interactBtn.Name = "Interact"
-    interactBtn.Parent = buttonFrame
-    interactBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-    interactBtn.BackgroundTransparency = 1.000
-    interactBtn.Position = UDim2.new(0.5, 0, 0.5, 0)
-    interactBtn.Size = UDim2.new(0, 491, 0, 34)
-    interactBtn.Text = ""
-
-    interactBtn.MouseButton1Click:Connect(function()
-        SETTINGS[settingKey] = not SETTINGS[settingKey]
-        SaveConfig()
-        valueLabel.Text = SETTINGS[settingKey] and "ENABLED" or "DISABLED"
-        valueLabel.TextColor3 = SETTINGS[settingKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
-        self.Notification:Fire(labelText .. " set to " .. (SETTINGS[settingKey] and "ENABLED" or "DISABLED"), "success")
-    end)
-
-    table.insert(_G.SettingsUpdaters, function()
-        valueLabel.Text = SETTINGS[settingKey] and "ENABLED" or "DISABLED"
-        valueLabel.TextColor3 = SETTINGS[settingKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
-    end)
-end
-
 local function SettingsManager()
     local notify = self.Notification
     
@@ -1639,11 +1641,7 @@ local function SettingsManager()
         serverHop = self.ServerHopButton.Interact,
         fastHop = self.FastHopButton.Interact
     }
-    
-    CreateSettingToggle("TravelSea1", "TRAVEL TO SEA 1", "TravelSea1", 5)
-    CreateSettingToggle("TravelSea2", "TRAVEL TO SEA 2", "TravelSea2", 6)
-    CreateSettingToggle("TravelSea3", "TRAVEL TO SEA 3", "TravelSea3", 7)
-    
+
     buttons.hideHats.MouseButton1Click:Connect(function()
         SETTINGS.RemoveHats = not SETTINGS.RemoveHats
         SaveConfig()
@@ -2173,7 +2171,7 @@ local function UpdateRightPanel()
     end
 
     if RPView == "fruits" then
-        self.RPTitle.Text = "SPAWNED FRUITS"
+        self.RPTitle.Text = "SPAWNED FRUITS [Switch]"
         local fruits = GetAllFruits()
         if #fruits == 0 then
             local noFruitsLabel = Instance.new("TextLabel")
@@ -2236,7 +2234,7 @@ local function UpdateRightPanel()
             end)
         end
     else
-        self.RPTitle.Text = "SERVER HISTORY"
+        self.RPTitle.Text = "SERVER HISTORY [Switch]"
         local history = {}
         for jobId, info in pairs(visitedServers) do
             if type(info) == "table" then
