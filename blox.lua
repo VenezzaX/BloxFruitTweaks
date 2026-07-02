@@ -1546,6 +1546,29 @@ end
 task.spawn(SettingsManager)
 
 local visitedServers = {}
+local VISITED_FILE = "FruitSniperVisited.json"
+local function LoadVisited()
+    if isfile and isfile(VISITED_FILE) then
+        local ok, data = pcall(function() return readfile(VISITED_FILE) end)
+        if ok and data then
+            local decoded = safeJSONDecode(data)
+            if type(decoded) == "table" then
+                local now = tick()
+                for k, v in pairs(decoded) do
+                    if type(v) == "number" and now - v < 3600 then
+                        visitedServers[k] = v
+                    end
+                end
+            end
+        end
+    end
+end
+local function SaveVisited()
+    if writefile then
+        pcall(function() writefile(VISITED_FILE, HttpService:JSONEncode(visitedServers)) end)
+    end
+end
+LoadVisited()
 local cursor = nil
 local hopping = false
 local currentPlaceId = nil
@@ -1693,11 +1716,25 @@ local function hop(placeId)
                 print("[XZYP FRUITAROO] - Found candidates in GUI list: " .. #candidates)
 
                 if #candidates > 0 then
+                    local shuffled = {}
+                    while #candidates > 0 do
+                        local idx = math.random(1, #candidates)
+                        table.insert(shuffled, candidates[idx])
+                        table.remove(candidates, idx)
+                    end
+                    candidates = shuffled
                     
                     queueOnTeleport(REINJECT_CODE)
 
                     for _, targetBtn in ipairs(candidates) do
                         local jobId = targetBtn:GetAttribute("Job")
+                        if jobId and jobId ~= "" then
+                            if visitedServers[jobId] then
+                                continue
+                            end
+                            visitedServers[jobId] = tick()
+                            SaveVisited()
+                        end
                         print("[XZYP FRUITAROO] - Triggering UI teleport join click for server: " .. tostring(jobId))
 
                         targetBtn.Text = "Join"
@@ -1836,17 +1873,19 @@ local function ServerHop()
     end
 
     -- Fallback to list-based or standard matchmaking hop if all travel commands are rejected
-    print("[XZYP FRUITAROO] - All official Sea Travel remotes failed. Re-injecting script...")
-    local ok, err = pcall(function()
-        if isfile and isfile("FruitSniper_combined.lua") then
-            loadstring(readfile("FruitSniper_combined.lua"))()
-        else
-            loadstring(game:HttpGet(GITHUB_URL, true))()
-        end
+    print("[XZYP FRUITAROO] - All official Sea Travel remotes failed. Triggering UI hop fallback...")
+    local ok = pcall(function()
+        hop(placeId)
     end)
     if not ok then
-        warn("[XZYP FRUITAROO] - Reinject fallback retry error: " .. tostring(err) .. ". Trying UI hop...")
-        hop(placeId)
+        warn("[XZYP FRUITAROO] - UI hop fallback failed. Re-injecting script locally...")
+        pcall(function()
+            if isfile and isfile("FruitSniper_combined.lua") then
+                loadstring(readfile("FruitSniper_combined.lua"))()
+            else
+                loadstring(game:HttpGet(GITHUB_URL, true))()
+            end
+        end)
     end
 end
 
