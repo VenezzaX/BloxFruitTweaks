@@ -13,12 +13,55 @@ local Player = player
 local CONFIG_FILE = "FruitSniperConfig.json"
 local GITHUB_URL = "https://raw.githubusercontent.com/VenezzaX/BloxFruitTweaks/refs/heads/main/blox.lua" 
 
+_G.SettingsUpdaters = {}
+
+local function safeJSONDecode(str)
+    local ok, result = pcall(HttpService.JSONDecode, HttpService, str)
+    return ok and result or nil
+end
+
+local visitedServers = {}
+local VISITED_FILE = "FruitSniperVisited.json"
+local function LoadVisited()
+    if isfile and isfile(VISITED_FILE) then
+        local ok, data = pcall(function() return readfile(VISITED_FILE) end)
+        if ok and data then
+            local decoded = safeJSONDecode(data)
+            if type(decoded) == "table" then
+                local now = tick()
+                for k, v in pairs(decoded) do
+                    local t = 0
+                    local c = 1
+                    if type(v) == "table" then
+                        t = v.time or 0
+                        c = v.count or 1
+                    elseif type(v) == "number" then
+                        t = v
+                    end
+                    if now - t < 86400 then
+                        visitedServers[k] = { time = t, count = c }
+                    end
+                end
+            end
+        end
+    end
+end
+local function SaveVisited()
+    if writefile then
+        pcall(function() writefile(VISITED_FILE, HttpService:JSONEncode(visitedServers)) end)
+    end
+end
+LoadVisited()
+
 local SETTINGS = {
     Team = "Pirates",
     ServerHop = true,
     FastHop = false,
     HideName = false,
     RemoveHats = false,
+    TravelSea1 = true,
+    TravelSea2 = true,
+    TravelSea3 = true,
     Fruits = {
         ["Rocket Fruit"] = true,
         ["Spin Fruit"] = true,
@@ -90,6 +133,9 @@ local function LoadConfig()
                 if data.FastHop ~= nil then SETTINGS.FastHop = data.FastHop end
                 if data.HideName ~= nil then SETTINGS.HideName = data.HideName end
                 if data.RemoveHats ~= nil then SETTINGS.RemoveHats = data.RemoveHats end
+                if data.TravelSea1 ~= nil then SETTINGS.TravelSea1 = data.TravelSea1 end
+                if data.TravelSea2 ~= nil then SETTINGS.TravelSea2 = data.TravelSea2 end
+                if data.TravelSea3 ~= nil then SETTINGS.TravelSea3 = data.TravelSea3 end
                 if type(data.Fruits) == "table" then
                     for k, v in pairs(data.Fruits) do
                         SETTINGS.Fruits[k] = v
@@ -103,6 +149,17 @@ end
 LoadConfig()
 _G.FruitSniperSettings = SETTINGS
 _G.FruitSniperGithubUrl = _G.FruitSniperGithubUrl or GITHUB_URL
+
+local currentJobId = game.JobId
+if currentJobId and currentJobId ~= "" then
+    if not visitedServers[currentJobId] then
+        visitedServers[currentJobId] = { time = tick(), count = 1 }
+    else
+        visitedServers[currentJobId].time = tick()
+        visitedServers[currentJobId].count = (visitedServers[currentJobId].count or 1) + 1
+    end
+    SaveVisited()
+end
 
 task.spawn(function()
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 15)
@@ -156,7 +213,7 @@ self.FruitDistance = Instance.new("TextLabel")
 self.FruitType = Instance.new("TextLabel")
 self.UIPadding = Instance.new("UIPadding")
 
-self.settings = Instance.new("Frame")
+self.settings = Instance.new("ScrollingFrame")
 self.UIListLayout_2 = Instance.new("UIListLayout")
 self.HideNameButton = Instance.new("Frame")
 self.UICorner_3 = Instance.new("UICorner")
@@ -221,7 +278,7 @@ self.UIListLayout_Fruits = Instance.new("UIListLayout")
 self.UIPadding_Fruits = Instance.new("UIPadding")
 
 self.RightPanel = Instance.new("Frame")
-self.RPTitle = Instance.new("TextLabel")
+self.RPTitle = Instance.new("TextButton")
 self.RPList = Instance.new("ScrollingFrame")
 self.RPListLayout = Instance.new("UIListLayout")
 
@@ -419,14 +476,23 @@ self.settings.BackgroundTransparency = 1.000
 self.settings.BorderColor3 = Color3.fromRGB(0, 0, 0)
 self.settings.BorderSizePixel = 0
 self.settings.Position = UDim2.new(0.5, 0, 0.5, 0)
-self.settings.Size = UDim2.new(0, 521, 0, 216)
+self.settings.Size = UDim2.new(0, 521, 0, 200)
 self.settings.Visible = false
+self.settings.CanvasSize = UDim2.new(0, 0, 0, 0)
+self.settings.AutomaticCanvasSize = Enum.AutomaticSize.Y
+self.settings.ScrollBarThickness = 6
+self.settings.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
 
 self.UIListLayout_2.Parent = self.settings
 self.UIListLayout_2.HorizontalAlignment = Enum.HorizontalAlignment.Center
 self.UIListLayout_2.SortOrder = Enum.SortOrder.LayoutOrder
-self.UIListLayout_2.VerticalAlignment = Enum.VerticalAlignment.Center
-self.UIListLayout_2.Padding = UDim.new(0, 5) 
+self.UIListLayout_2.VerticalAlignment = Enum.VerticalAlignment.Top
+self.UIListLayout_2.Padding = UDim.new(0, 5)
+
+local settingsPadding = Instance.new("UIPadding")
+settingsPadding.Parent = self.settings
+settingsPadding.PaddingTop = UDim.new(0, 5)
+settingsPadding.PaddingBottom = UDim.new(0, 5) 
 
 self.RemoveHatsButton.Name = "RemoveHatsButton"
 self.RemoveHatsButton.Parent = self.settings
@@ -711,7 +777,7 @@ self.AbortButton.BackgroundColor3 = Color3.fromRGB(255, 183, 184)
 self.AbortButton.BackgroundTransparency = 0.700
 self.AbortButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
 self.AbortButton.BorderSizePixel = 0
-self.AbortButton.LayoutOrder = 5
+self.AbortButton.LayoutOrder = 8
 self.AbortButton.Size = UDim2.new(0, 491, 0, 34)
 
 self.UICorner_5.CornerRadius = UDim.new(0, 5)
@@ -1136,6 +1202,10 @@ local function UpdateUIValues()
     self.Value_FH.TextColor3 = SETTINGS.FastHop and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
 
     self.Value_3.Text = "ABORT"
+
+    for _, updater in ipairs(_G.SettingsUpdaters) do
+        pcall(updater)
+    end
 end
 
 UpdateUIValues()
@@ -1482,6 +1552,83 @@ local function NotificationManager()
 end
 task.spawn(NotificationManager)
 
+local function CreateSettingToggle(name, labelText, settingKey, layoutOrder)
+    local buttonFrame = Instance.new("Frame")
+    buttonFrame.Name = name .. "Button"
+    buttonFrame.Parent = self.settings
+    buttonFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    buttonFrame.BackgroundTransparency = 0.700
+    buttonFrame.BorderSizePixel = 0
+    buttonFrame.LayoutOrder = layoutOrder
+    buttonFrame.Size = UDim2.new(0, 491, 0, 34)
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = buttonFrame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = buttonFrame
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 2.000
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "Title"
+    titleLabel.Parent = buttonFrame
+    titleLabel.AnchorPoint = Vector2.new(0, 0.5)
+    titleLabel.BackgroundTransparency = 1.000
+    titleLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    titleLabel.Size = UDim2.new(0, 200, 0, 21)
+    titleLabel.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    titleLabel.Text = labelText
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextSize = 16.000
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local titlePadding = Instance.new("UIPadding")
+    titlePadding.Parent = titleLabel
+    titlePadding.PaddingLeft = UDim.new(0, 10)
+
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Name = "Value"
+    valueLabel.Parent = buttonFrame
+    valueLabel.AnchorPoint = Vector2.new(1, 0.5)
+    valueLabel.BackgroundTransparency = 1.000
+    valueLabel.Position = UDim2.new(1, 0, 0.5, 0)
+    valueLabel.Size = UDim2.new(0, 200, 0, 21)
+    valueLabel.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    valueLabel.Text = SETTINGS[settingKey] and "ENABLED" or "DISABLED"
+    valueLabel.TextColor3 = SETTINGS[settingKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
+    valueLabel.TextSize = 14.000
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+    local valuePadding = Instance.new("UIPadding")
+    valuePadding.Parent = valueLabel
+    valuePadding.PaddingRight = UDim.new(0, 10)
+
+    local interactBtn = Instance.new("TextButton")
+    interactBtn.Name = "Interact"
+    interactBtn.Parent = buttonFrame
+    interactBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+    interactBtn.BackgroundTransparency = 1.000
+    interactBtn.Position = UDim2.new(0.5, 0, 0.5, 0)
+    interactBtn.Size = UDim2.new(0, 491, 0, 34)
+    interactBtn.Text = ""
+
+    interactBtn.MouseButton1Click:Connect(function()
+        SETTINGS[settingKey] = not SETTINGS[settingKey]
+        SaveConfig()
+        valueLabel.Text = SETTINGS[settingKey] and "ENABLED" or "DISABLED"
+        valueLabel.TextColor3 = SETTINGS[settingKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
+        self.Notification:Fire(labelText .. " set to " .. (SETTINGS[settingKey] and "ENABLED" or "DISABLED"), "success")
+    end)
+
+    table.insert(_G.SettingsUpdaters, function()
+        valueLabel.Text = SETTINGS[settingKey] and "ENABLED" or "DISABLED"
+        valueLabel.TextColor3 = SETTINGS[settingKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 100, 100)
+    end)
+end
+
 local function SettingsManager()
     local notify = self.Notification
     
@@ -1492,6 +1639,10 @@ local function SettingsManager()
         serverHop = self.ServerHopButton.Interact,
         fastHop = self.FastHopButton.Interact
     }
+    
+    CreateSettingToggle("TravelSea1", "TRAVEL TO SEA 1", "TravelSea1", 5)
+    CreateSettingToggle("TravelSea2", "TRAVEL TO SEA 2", "TravelSea2", 6)
+    CreateSettingToggle("TravelSea3", "TRAVEL TO SEA 3", "TravelSea3", 7)
     
     buttons.hideHats.MouseButton1Click:Connect(function()
         SETTINGS.RemoveHats = not SETTINGS.RemoveHats
@@ -1545,30 +1696,6 @@ local function SettingsManager()
 end
 task.spawn(SettingsManager)
 
-local visitedServers = {}
-local VISITED_FILE = "FruitSniperVisited.json"
-local function LoadVisited()
-    if isfile and isfile(VISITED_FILE) then
-        local ok, data = pcall(function() return readfile(VISITED_FILE) end)
-        if ok and data then
-            local decoded = safeJSONDecode(data)
-            if type(decoded) == "table" then
-                local now = tick()
-                for k, v in pairs(decoded) do
-                    if type(v) == "number" and now - v < 3600 then
-                        visitedServers[k] = v
-                    end
-                end
-            end
-        end
-    end
-end
-local function SaveVisited()
-    if writefile then
-        pcall(function() writefile(VISITED_FILE, HttpService:JSONEncode(visitedServers)) end)
-    end
-end
-LoadVisited()
 local cursor = nil
 local hopping = false
 local currentPlaceId = nil
@@ -1577,11 +1704,6 @@ local REQUEST_DELAY = 2
 local TELEPORT_DELAY = 3
 local REFRESH_INTERVAL = 10
 local lastRefresh = 0
-
-local function safeJSONDecode(str)
-    local ok, result = pcall(HttpService.JSONDecode, HttpService, str)
-    return ok and result or nil
-end
 
 local function httpGet(url)
     
@@ -1732,7 +1854,7 @@ local function hop(placeId)
                             if visitedServers[jobId] then
                                 continue
                             end
-                            visitedServers[jobId] = tick()
+                            visitedServers[jobId] = { time = tick(), count = (visitedServers[jobId] and visitedServers[jobId].count or 0) + 1 }
                             SaveVisited()
                         end
                         print("[XZYP FRUITAROO] - Triggering UI teleport join click for server: " .. tostring(jobId))
@@ -1836,12 +1958,33 @@ local function ServerHop()
     end
 
     local options = {}
-    table.insert(options, { sea = 1, cmd = "TravelMain" })
-    if hasSea2 then
+    if SETTINGS.TravelSea1 then
+        table.insert(options, { sea = 1, cmd = "TravelMain" })
+    end
+    if hasSea2 and SETTINGS.TravelSea2 then
         table.insert(options, { sea = 2, cmd = "TravelDressrosa" })
     end
-    if hasSea3 then
+    if hasSea3 and SETTINGS.TravelSea3 then
         table.insert(options, { sea = 3, cmd = "TravelZou" })
+    end
+
+    if #options == 0 then
+        warn("[XZYP FRUITAROO] - All travel options disabled in settings. Skipping travel remotes...")
+        print("[XZYP FRUITAROO] - All official Sea Travel remotes failed. Triggering UI hop fallback...")
+        local ok = pcall(function()
+            hop(placeId)
+        end)
+        if not ok then
+            warn("[XZYP FRUITAROO] - UI hop fallback failed. Re-injecting script locally...")
+            pcall(function()
+                if isfile and isfile("FruitSniper_combined.lua") then
+                    loadstring(readfile("FruitSniper_combined.lua"))()
+                else
+                    loadstring(game:HttpGet(GITHUB_URL, true))()
+                end
+            end)
+        end
+        return
     end
 
     local diffSeas = {}
@@ -1887,7 +2030,6 @@ local function ServerHop()
         end
     end
 
-    -- Fallback to list-based or standard matchmaking hop if all travel commands are rejected
     print("[XZYP FRUITAROO] - All official Sea Travel remotes failed. Triggering UI hop fallback...")
     local ok = pcall(function()
         hop(placeId)
@@ -2021,82 +2163,153 @@ local function StoreFruit(fruit)
     end
 end
 
-local function UpdateSpawnedFruitsList(fruits)
-    
+local RPView = "fruits"
+
+local function UpdateRightPanel()
     for _, child in ipairs(self.RPList:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextLabel") then
             child:Destroy()
         end
     end
 
-    if #fruits == 0 then
-        local noFruitsLabel = Instance.new("TextLabel")
-        noFruitsLabel.Name = "NoFruitsLabel"
-        noFruitsLabel.Parent = self.RPList
-        noFruitsLabel.BackgroundTransparency = 1.000
-        noFruitsLabel.Size = UDim2.new(1, 0, 0, 30)
-        noFruitsLabel.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Medium, Enum.FontStyle.Italic)
-        noFruitsLabel.Text = "No Fruits Spawned"
-        noFruitsLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-        noFruitsLabel.TextSize = 12.000
-        return
-    end
-
-    for _, fruit in ipairs(fruits) do
-        local frame = Instance.new("Frame")
-        frame.Name = fruit.Name .. "_Item"
-        frame.Parent = self.RPList
-        frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        frame.BackgroundTransparency = 0.85
-        frame.Size = UDim2.new(1, 0, 0, 26)
-
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 4)
-        corner.Parent = frame
-
-        local label = Instance.new("TextLabel")
-        label.Parent = frame
-        label.BackgroundTransparency = 1.000
-        label.Position = UDim2.new(0, 8, 0, 0)
-        label.Size = UDim2.new(1, -16, 1, 0)
-        label.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-        label.Text = fruit.Name
-        
-        if IsAllowedFruit(fruit.Name) then
-            label.TextColor3 = Color3.fromRGB(0, 255, 127) 
-        else
-            label.TextColor3 = Color3.fromRGB(200, 200, 200) 
+    if RPView == "fruits" then
+        self.RPTitle.Text = "SPAWNED FRUITS"
+        local fruits = GetAllFruits()
+        if #fruits == 0 then
+            local noFruitsLabel = Instance.new("TextLabel")
+            noFruitsLabel.Name = "NoFruitsLabel"
+            noFruitsLabel.Parent = self.RPList
+            noFruitsLabel.BackgroundTransparency = 1.000
+            noFruitsLabel.Size = UDim2.new(1, 0, 0, 30)
+            noFruitsLabel.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Medium, Enum.FontStyle.Italic)
+            noFruitsLabel.Text = "No Fruits Spawned"
+            noFruitsLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+            noFruitsLabel.TextSize = 12.000
+            return
         end
-        
-        label.TextSize = 11.000
-        label.TextXAlignment = Enum.TextXAlignment.Left
 
-        local btn = Instance.new("TextButton")
-        btn.Name = "TeleportBtn"
-        btn.Parent = frame
-        btn.BackgroundTransparency = 1.000
-        btn.Size = UDim2.new(1, 0, 1, 0)
-        btn.Text = ""
+        for _, fruit in ipairs(fruits) do
+            local frame = Instance.new("Frame")
+            frame.Name = fruit.Name .. "_Item"
+            frame.Parent = self.RPList
+            frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            frame.BackgroundTransparency = 0.85
+            frame.Size = UDim2.new(1, 0, 0, 26)
 
-        btn.MouseButton1Click:Connect(function()
-            if fruit and fruit:FindFirstChild("Handle") then
-                self.Notification:Fire("Manual Teleport to: " .. fruit.Name, "success")
-                task.spawn(function()
-                    TweenTo(fruit.Handle.Position)
-                end)
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 4)
+            corner.Parent = frame
+
+            local label = Instance.new("TextLabel")
+            label.Parent = frame
+            label.BackgroundTransparency = 1.000
+            label.Position = UDim2.new(0, 8, 0, 0)
+            label.Size = UDim2.new(1, -16, 1, 0)
+            label.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+            label.Text = fruit.Name
+            
+            if IsAllowedFruit(fruit.Name) then
+                label.TextColor3 = Color3.fromRGB(0, 255, 127) 
             else
-                self.Notification:Fire("Fruit has been collected or destroyed.", "error")
+                label.TextColor3 = Color3.fromRGB(200, 200, 200) 
             end
-        end)
+            
+            label.TextSize = 11.000
+            label.TextXAlignment = Enum.TextXAlignment.Left
+
+            local btn = Instance.new("TextButton")
+            btn.Name = "TeleportBtn"
+            btn.Parent = frame
+            btn.BackgroundTransparency = 1.000
+            btn.Size = UDim2.new(1, 0, 1, 0)
+            btn.Text = ""
+
+            btn.MouseButton1Click:Connect(function()
+                if fruit and fruit:FindFirstChild("Handle") then
+                    self.Notification:Fire("Manual Teleport to: " .. fruit.Name, "success")
+                    task.spawn(function()
+                        TweenTo(fruit.Handle.Position)
+                    end)
+                else
+                    self.Notification:Fire("Fruit has been collected or destroyed.", "error")
+                end
+            end)
+        end
+    else
+        self.RPTitle.Text = "SERVER HISTORY"
+        local history = {}
+        for jobId, info in pairs(visitedServers) do
+            if type(info) == "table" then
+                table.insert(history, { jobId = jobId, time = info.time or 0, count = info.count or 1 })
+            else
+                table.insert(history, { jobId = jobId, time = info, count = 1 })
+            end
+        end
+        table.sort(history, function(a, b) return a.time > b.time end)
+
+        if #history == 0 then
+            local noHistoryLabel = Instance.new("TextLabel")
+            noHistoryLabel.Name = "NoHistoryLabel"
+            noHistoryLabel.Parent = self.RPList
+            noHistoryLabel.BackgroundTransparency = 1.000
+            noHistoryLabel.Size = UDim2.new(1, 0, 0, 30)
+            noHistoryLabel.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.Medium, Enum.FontStyle.Italic)
+            noHistoryLabel.Text = "No Server History"
+            noHistoryLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+            noHistoryLabel.TextSize = 12.000
+            return
+        end
+
+        for _, item in ipairs(history) do
+            local frame = Instance.new("Frame")
+            frame.Name = item.jobId .. "_HistoryItem"
+            frame.Parent = self.RPList
+            frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            frame.BackgroundTransparency = 0.85
+            frame.Size = UDim2.new(1, 0, 0, 26)
+
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 4)
+            corner.Parent = frame
+
+            local label = Instance.new("TextLabel")
+            label.Parent = frame
+            label.BackgroundTransparency = 1.000
+            label.Position = UDim2.new(0, 8, 0, 0)
+            label.Size = UDim2.new(1, -16, 1, 0)
+            label.FontFace = Font.new("rbxasset://fonts/families/Inter", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+            
+            local shortJob = string.sub(item.jobId, 1, 8)
+            label.Text = shortJob .. " | Joined: " .. tostring(item.count) .. "x"
+            
+            if item.jobId == game.JobId then
+                label.TextColor3 = Color3.fromRGB(0, 170, 255)
+                label.Text = label.Text .. " (Current)"
+            else
+                label.TextColor3 = Color3.fromRGB(220, 220, 220)
+            end
+            
+            label.TextSize = 11.000
+            label.TextXAlignment = Enum.TextXAlignment.Left
+        end
     end
 end
+
+self.RPTitle.MouseButton1Click:Connect(function()
+    if RPView == "fruits" then
+        RPView = "history"
+    else
+        RPView = "fruits"
+    end
+    UpdateRightPanel()
+end)
 
 local function Main()
     while true do
         Status.Text = 'Status: <font color="rgb(255,255,0)" weight="Regular">Searching fruit...</font>'
 
         local fruits = GetAllFruits()
-        UpdateSpawnedFruitsList(fruits)
+        UpdateRightPanel()
 
         if #fruits == 0 then
             if SETTINGS.ServerHop then
