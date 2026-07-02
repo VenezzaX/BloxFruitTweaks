@@ -1779,10 +1779,10 @@ local function hop(placeId)
     end)
 
     if not ok then
-        warn("[XZYP FRUITAROO] - Matchmaking fallback failed. Retrying hop in 5s...")
+        warn("[XZYP FRUITAROO] - Matchmaking fallback failed. Retrying seas travel remotes in 5s...")
         task.wait(5)
         hopping = false
-        hop(placeId)
+        task.spawn(ServerHop)
     end
 end
 
@@ -1791,6 +1791,21 @@ local function ServerHop()
         print("[XZYP FRUITAROO] - Server Hop is disabled in settings.")
         return
     end
+
+    local currentJob = game.JobId
+    task.spawn(function()
+        task.wait(15)
+        if game.JobId == currentJob then
+            warn("[XZYP FRUITAROO] - Hop watchdog triggered (15s timeout). Reinjecting script...")
+            pcall(function()
+                if isfile and isfile("FruitSniper_combined.lua") then
+                    loadstring(readfile("FruitSniper_combined.lua"))()
+                else
+                    loadstring(game:HttpGet(GITHUB_URL, true))()
+                end
+            end)
+        end
+    end)
 
     local char = Player.Character
     if char and char:GetAttribute("InCombat") == true then
