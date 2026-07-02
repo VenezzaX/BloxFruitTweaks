@@ -1,3 +1,5 @@
+
+
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
@@ -160,12 +162,36 @@ if currentJobId and currentJobId ~= "" then
 end
 
 task.spawn(function()
-    local remotes = ReplicatedStorage:WaitForChild("Remotes", 15)
-    local commF = remotes and remotes:WaitForChild("CommF_", 15)
-    if commF then
-        pcall(function()
-            commF:InvokeServer("SetTeam", SETTINGS.Team)
-        end)
+    local startTime = tick()
+    local joined = false
+    
+    task.delay(15, function()
+        if not joined then
+            warn("[XZYP FRUITAROO] - Failed to join team within 15s. Reinjecting script...")
+            pcall(function()
+                if isfile and isfile("FruitSniper_combined.lua") then
+                    loadstring(readfile("FruitSniper_combined.lua"))()
+                else
+                    loadstring(game:HttpGet(GITHUB_URL, true))()
+                end
+            end)
+        end
+    end)
+
+    while not joined and tick() - startTime < 15 do
+        local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+        local commF = remotes and remotes:FindFirstChild("CommF_")
+        if commF then
+            local success, result = pcall(function()
+                return commF:InvokeServer("SetTeam", SETTINGS.Team)
+            end)
+            if success and player.Team ~= nil then
+                joined = true
+                print("[XZYP FRUITAROO] - Successfully joined team: " .. tostring(SETTINGS.Team))
+                break
+            end
+        end
+        task.wait(1)
     end
 end)
 
@@ -1937,6 +1963,32 @@ local function ServerHop()
         print("[XZYP FRUITAROO] - Out of combat. Proceeding to server hop...")
     end
 
+    local placeId = game.PlaceId
+
+    local onRepeatedServer = false
+    if currentJob and visitedServers[currentJob] and type(visitedServers[currentJob]) == "table" then
+        if (visitedServers[currentJob].count or 1) >= 3 then
+            onRepeatedServer = true
+        end
+    end
+
+    if onRepeatedServer then
+        warn("[XZYP FRUITAROO] - Repeated server detected too much. Bypassing sea travel and using UI hop fallback...")
+        local ok = pcall(function()
+            hop(placeId)
+        end)
+        if not ok then
+            pcall(function()
+                if isfile and isfile("FruitSniper_combined.lua") then
+                    loadstring(readfile("FruitSniper_combined.lua"))()
+                else
+                    loadstring(game:HttpGet(GITHUB_URL, true))()
+                end
+            end)
+        end
+        return
+    end
+
     print("[XZYP FRUITAROO] - Preparing to Server Hop using official Sea Travel remotes...")
 
     queueOnTeleport(REINJECT_CODE)
@@ -1946,14 +1998,6 @@ local function ServerHop()
     
     local hasSea2 = playerLevel >= 700
     local hasSea3 = playerLevel >= 1500
-
-    local currentSea = 1
-    local placeId = game.PlaceId
-    if placeId == 444227218 then
-        currentSea = 2
-    elseif placeId == 744942363 then
-        currentSea = 3
-    end
 
     local options = {}
     if SETTINGS.TravelSea1 then
@@ -1985,29 +2029,21 @@ local function ServerHop()
         return
     end
 
-    local diffSeas = {}
-    local sameSea = nil
+    local tempOptions = {}
     for _, opt in ipairs(options) do
-        if opt.sea == currentSea then
-            sameSea = opt
-        else
-            table.insert(diffSeas, opt)
-        end
+        table.insert(tempOptions, opt)
     end
 
-    local shuffledDiff = {}
-    while #diffSeas > 0 do
-        local idx = math.random(1, #diffSeas)
-        table.insert(shuffledDiff, diffSeas[idx])
-        table.remove(diffSeas, idx)
+    local shuffled = {}
+    while #tempOptions > 0 do
+        local idx = math.random(1, #tempOptions)
+        table.insert(shuffled, tempOptions[idx])
+        table.remove(tempOptions, idx)
     end
 
     local travelSequence = {}
-    for _, opt in ipairs(shuffledDiff) do
+    for _, opt in ipairs(shuffled) do
         table.insert(travelSequence, opt.cmd)
-    end
-    if sameSea then
-        table.insert(travelSequence, sameSea.cmd)
     end
 
     local CommF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
