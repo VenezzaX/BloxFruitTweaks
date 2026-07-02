@@ -11,7 +11,7 @@ local player = Players.LocalPlayer
 local Player = player
 
 local CONFIG_FILE = "FruitSniperConfig.json"
-local GITHUB_URL = "https://raw.githubusercontent.com/your-username/your-repo/main/FruitSniper_combined.lua" 
+local GITHUB_URL = "https://raw.githubusercontent.com/VenezzaX/BloxFruitTweaks/refs/heads/main/blox.lua" 
 
 local SETTINGS = {
     Team = "Pirates",
