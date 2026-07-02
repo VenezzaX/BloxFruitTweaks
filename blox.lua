@@ -1835,8 +1835,19 @@ local function ServerHop()
         end
     end
 
-    print("[XZYP FRUITAROO] - All official Sea Travel remotes failed, using UI list fallback...")
-    hop(placeId)
+    -- Fallback to list-based or standard matchmaking hop if all travel commands are rejected
+    print("[XZYP FRUITAROO] - All official Sea Travel remotes failed. Re-injecting script...")
+    local ok, err = pcall(function()
+        if isfile and isfile("FruitSniper_combined.lua") then
+            loadstring(readfile("FruitSniper_combined.lua"))()
+        else
+            loadstring(game:HttpGet(GITHUB_URL, true))()
+        end
+    end)
+    if not ok then
+        warn("[XZYP FRUITAROO] - Reinject fallback retry error: " .. tostring(err) .. ". Trying UI hop...")
+        hop(placeId)
+    end
 end
 
 local Status = self.Status
